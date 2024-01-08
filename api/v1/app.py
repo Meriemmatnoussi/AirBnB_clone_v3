@@ -1,49 +1,30 @@
+#!/usr/bin/python3
+"""runing flask"""
 from api.v1.views import app_views
-from flask import Flask, jsonify, request
-from models.state import State
+from flask import Flask
+from flask import jsonify
+from flask_cors import CORS
 from models import storage
+import os
 
-@app_views.route('/states', methods=['GET'], strict_slashes=False)
-def get_states():
-    states = storage.all(State)
-    return jsonify([state.to_dict() for state in states.values()])
+app = Flask(__name__)
+app.register_blueprint(app_views)
+CORS(app, resources={r"/*": {"origins": "0.0.0.0"}})
 
-@app_views.route('/states/<state_id>', methods=['GET'], strict_slashes=False)
-def get_state(state_id):
-    state = storage.get(State, state_id)
-    if state is None:
-        abort(404)
-    return jsonify(state.to_dict())
 
-@app_views.route('/states/<state_id>', methods=['DELETE'], strict_slashes=False)
-def delete_state(state_id):
-    state = storage.get(State, state_id)
-    if state is None:
-        abort(404)
-    storage.delete(state)
-    storage.save()
-    return jsonify({})
+@app.teardown_appcontext
+def close_db(error):
+    """Close storage on teardown."""
+    storage.close()
 
-@app_views.route('/states', methods=['POST'], strict_slashes=False)
-def create_state():
-    if not request.json:
-        abort(400, "Not a JSON")
-    if "name" not in request.json:
-        abort(400, "Missing name")
-    state = State(**request.json)
-    state.save()
-    return jsonify(state.to_dict()), 201
 
-@app_views.route('/states/<state_id>', methods=['PUT'], strict_slashes=False)
-def update_state(state_id):
-    state = storage.get(State, state_id)
-    if state is None:
-        abort(404)
-    if not request.json:
-        abort(400, "Not a JSON")
-    for key, value in request.json.items():
-        if key not in ['id', 'created_at', 'updated_at']:
-            setattr(state, key, value)
-    state.save()
-    return jsonify(state.to_dict())
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors."""
+    return jsonify({"error": "Not found"}), 404
 
+
+if __name__ == "__main__":
+    host = os.getenv('HBNB_API_HOST', '0.0.0.0')
+    port = os.getenv('HBNB_API_PORT', '5000')
+    app.run(host=host, port=port, threaded=True)
