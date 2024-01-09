@@ -29,7 +29,8 @@ def get_state(state_id):
         abort(404)
 
     return jsonify(state.to_dict())
-[12:03 AM]
+
+
 @app_views.route('/states/<state_id>', methods=['DELETE'],
                  strict_slashes=False)
 @swag_from('documentation/state/delete_state.yml', methods=['DELETE'])
